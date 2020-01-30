@@ -2,10 +2,9 @@ from torch import nn
 from tqdm import tqdm
 from scipy.ndimage.filters import gaussian_filter
 
-from utils import *
+from RISE.utils import *
 
 HW = 224 * 224 # image area
-n_classes = 1000
 
 def gkern(klen, nsig):
     """Returns a Gaussian kernel array.
@@ -28,7 +27,7 @@ def auc(arr):
 
 class CausalMetric():
 
-    def __init__(self, model, mode, step, substrate_fn):
+    def __init__(self, model, mode, step, substrate_fn, n_classes):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -42,6 +41,8 @@ class CausalMetric():
         self.mode = mode
         self.step = step
         self.substrate_fn = substrate_fn
+        self.n_classes = n_classes
+        self.softmax = nn.Softmax(dim=1)
 
     def single_run(self, img_tensor, explanation, verbose=0, save_to=None):
         r"""Run metric on one image-saliency pair.
@@ -58,9 +59,8 @@ class CausalMetric():
         Return:
             scores (nd.array): Array containing scores at every step.
         """
-        pred = self.model(img_tensor.cuda())
-        top, c = torch.max(pred, 1)
-        c = c.cpu().numpy()[0]
+        pred = self.softmax(self.model(img_tensor.cuda()))
+        c = torch.argmax(pred, 1).cpu().numpy()[0]
         n_steps = (HW + self.step - 1) // self.step
 
         if self.mode == 'del':
@@ -78,7 +78,7 @@ class CausalMetric():
         # Coordinates of pixels in order of decreasing saliency
         salient_order = np.flip(np.argsort(explanation.reshape(-1, HW), axis=1), axis=-1)
         for i in range(n_steps+1):
-            pred = self.model(start.cuda())
+            pred = self.softmax(self.model(start.cuda()))
             pr, cl = torch.topk(pred, 2)
             if verbose == 2:
                 print('{}: {:.3f}'.format(get_class_name(cl[0][0]), float(pr[0][0])))
@@ -90,7 +90,7 @@ class CausalMetric():
                 plt.subplot(121)
                 plt.title('{} {:.1f}%, P={:.4f}'.format(ylabel, 100 * i / n_steps, scores[i]))
                 plt.axis('off')
-                tensor_imshow(start[0])
+                tensor_imshow(start.cpu()[0])
 
                 plt.subplot(122)
                 plt.plot(np.arange(i+1) / n_steps, scores[:i+1])
@@ -99,7 +99,7 @@ class CausalMetric():
                 plt.fill_between(np.arange(i+1) / n_steps, 0, scores[:i+1], alpha=0.4)
                 plt.title(title)
                 plt.xlabel(ylabel)
-                plt.ylabel(get_class_name(c))
+                # plt.ylabel(get_class_name(c))
                 if save_to:
                     plt.savefig(save_to + '/{:03d}.png'.format(i))
                     plt.close()
@@ -122,7 +122,7 @@ class CausalMetric():
             scores (nd.array): Array containing scores at every step for every image.
         """
         n_samples = img_batch.shape[0]
-        predictions = torch.FloatTensor(n_samples, n_classes)
+        predictions = torch.FloatTensor(n_samples, self.n_classes)
         assert n_samples % batch_size == 0
         for i in tqdm(range(n_samples // batch_size), desc='Predicting labels'):
             preds = self.model(img_batch[i*batch_size:(i+1)*batch_size].cuda()).cpu()
@@ -138,7 +138,7 @@ class CausalMetric():
             substrate[j*batch_size:(j+1)*batch_size] = self.substrate_fn(img_batch[j*batch_size:(j+1)*batch_size])
 
         if self.mode == 'del':
-            caption = 'Deleting  '
+            caption = 'Deleting '
             start = img_batch.clone()
             finish = substrate
         elif self.mode == 'ins':
@@ -151,7 +151,7 @@ class CausalMetric():
             # Iterate over batches
             for j in range(n_samples // batch_size):
                 # Compute new scores
-                preds = self.model(start[j*batch_size:(j+1)*batch_size].cuda())
+                preds = self.softmax(self.model(start[j*batch_size:(j+1)*batch_size].cuda()))
                 preds = preds.cpu().numpy()[range(batch_size), top[j*batch_size:(j+1)*batch_size]]
                 scores[i, j*batch_size:(j+1)*batch_size] = preds
             # Change specified number of most salient pixels to substrate pixels
