@@ -27,7 +27,7 @@ def auc(arr):
 
 class CausalMetric():
 
-    def __init__(self, model, mode, step, substrate_fn, n_classes):
+    def __init__(self, model, mode, step, substrate_fn, n_classes, device):
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -43,6 +43,7 @@ class CausalMetric():
         self.substrate_fn = substrate_fn
         self.n_classes = n_classes
         self.softmax = nn.Softmax(dim=1)
+        self.device = device
 
     def single_run(self, img_tensor, explanation, verbose=0, save_to=None):
         r"""Run metric on one image-saliency pair.
@@ -59,7 +60,7 @@ class CausalMetric():
         Return:
             scores (nd.array): Array containing scores at every step.
         """
-        pred = self.softmax(self.model(img_tensor.cuda()))
+        pred = self.softmax(self.model(img_tensor.to(self.device)))
         c = torch.argmax(pred, 1).cpu().numpy()[0]
         n_steps = (HW + self.step - 1) // self.step
 
@@ -78,7 +79,7 @@ class CausalMetric():
         # Coordinates of pixels in order of decreasing saliency
         salient_order = np.flip(np.argsort(explanation.reshape(-1, HW), axis=1), axis=-1)
         for i in range(n_steps+1):
-            pred = self.softmax(self.model(start.cuda()))
+            pred = self.softmax(self.model(start.to(self.device)))
             pr, cl = torch.topk(pred, 2)
             if verbose == 2:
                 print('{}: {:.3f}'.format(get_class_name(cl[0][0]), float(pr[0][0])))
@@ -125,7 +126,7 @@ class CausalMetric():
         predictions = torch.FloatTensor(n_samples, self.n_classes)
         assert n_samples % batch_size == 0
         for i in tqdm(range(n_samples // batch_size), desc='Predicting labels'):
-            preds = self.model(img_batch[i*batch_size:(i+1)*batch_size].cuda()).cpu()
+            preds = self.model(img_batch[i*batch_size:(i+1)*batch_size].to(self.device)).cpu()
             predictions[i*batch_size:(i+1)*batch_size] = preds
         top = np.argmax(predictions, -1)
         n_steps = (HW + self.step - 1) // self.step
@@ -151,7 +152,7 @@ class CausalMetric():
             # Iterate over batches
             for j in range(n_samples // batch_size):
                 # Compute new scores
-                preds = self.softmax(self.model(start[j*batch_size:(j+1)*batch_size].cuda()))
+                preds = self.softmax(self.model(start[j*batch_size:(j+1)*batch_size].to(self.device)))
                 preds = preds.cpu().numpy()[range(batch_size), top[j*batch_size:(j+1)*batch_size]]
                 scores[i, j*batch_size:(j+1)*batch_size] = preds
             # Change specified number of most salient pixels to substrate pixels
