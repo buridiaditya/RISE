@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from tqdm import tqdm
 from scipy.ndimage.filters import gaussian_filter
@@ -27,7 +28,7 @@ def auc(arr):
 
 class CausalMetric():
 
-    def __init__(self, model, mode, step, substrate_fn, n_classes, device):
+    def __init__(self, model, mode, step, substrate_fn, n_classes, device=torch.device('cpu')):
         r"""Create deletion/insertion metric instance.
 
         Args:
