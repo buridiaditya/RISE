@@ -5,7 +5,7 @@ from torch.utils.data.sampler import Sampler
 from torchvision import transforms, datasets
 from PIL import Image
 
-
+from os import path
 # Dummy class to store arguments
 class Dummy():
     pass
@@ -38,7 +38,8 @@ def tensor_imshow(inp, title=None, **kwargs):
 
 # Given label number returns class name
 def get_class_name(c):
-    labels = np.loadtxt('synset_words.txt', str, delimiter='\t')
+    path.join(path.dirname(__file__), '..')
+    labels = np.loadtxt(path.join(path.dirname(__file__), '..','synset_words.txt'), str, delimiter='\t')
     return ' '.join(labels[c].split(',')[0].split()[1:])
 
 
