@@ -79,7 +79,7 @@ class CausalMetric():
         scores = np.empty(n_steps + 1)
         # Coordinates of pixels in order of decreasing saliency
         salient_order = np.flip(np.argsort(explanation.reshape(-1, HW), axis=1), axis=-1)
-        for i in range(n_steps+1):
+        for i in tqdm(range(n_steps+1)):
             pred = self.softmax(self.model(start.to(self.device)))
             pr, cl = torch.topk(pred, 2)
             if verbose == 2:
