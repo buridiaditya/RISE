@@ -29,11 +29,7 @@ def auc(arr):
 
 class CausalMetric():
 
-<<<<<<< HEAD
-    def __init__(self, model, mode, step, substrate_fn, n_classes, device=torch.device("cpu")):
-=======
     def __init__(self, model, mode, step, substrate_fn, n_classes, device=torch.device('cpu')):
->>>>>>> 31a210ae2e035358dc7e57d376cd428429e39b62
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -135,6 +131,7 @@ class CausalMetric():
             preds = self.model(img_batch[i*batch_size:(i+1)*batch_size].to(self.device)).cpu()
             predictions[i*batch_size:(i+1)*batch_size] = preds
         top = np.argmax(predictions, -1)
+        exp_batch = exp_batch[range(n_samples), top.cpu().numpy()]
         n_steps = (HW + self.step - 1) // self.step
         scores = np.empty((n_steps + 1, n_samples))
         salient_order = np.flip(np.argsort(exp_batch.reshape(-1, HW), axis=1), axis=-1)
