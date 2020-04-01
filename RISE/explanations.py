@@ -64,24 +64,27 @@ class RISE(nn.Module):
     
     
 class RISEBatch(RISE):
-    def forward(self, x):
-        # Apply array of filters to the image
-        N = self.N
-        B, C, H, W = x.size()
-        stack = torch.mul(self.masks.view(N, 1, H, W), x.data.view(B * C, H, W))
-        stack = stack.view(B * N, C, H, W)
-        stack = stack
+    def forward(self, x): 
+        with torch.no_grad():
+            # Apply array of filters to the image
+            N = self.N
+            B, C, H, W = x.size()
+            stack = torch.mul(self.masks.view(N, 1, H, W), x.data.view(B * C, H, W))
+            stack = stack.view(B * N, C, H, W)
+            stack = stack
 
-        #p = nn.Softmax(dim=1)(model(stack)) in batches
-        p = []
-        for i in range(0, N*B, self.gpu_batch):
-            p.append(self.model(stack[i:min(i + self.gpu_batch, N*B)]))
-        p = torch.cat(p)
-        CL = p.size(1)
-        p = p.view(N, B, CL)
-        sal = torch.matmul(p.permute(1, 2, 0), self.masks.view(N, H * W))
-        sal = sal.view(B, CL, H, W)
-        return sal
+            #p = nn.Softmax(dim=1)(model(stack)) in batches
+            p = []
+            for i in range(0, N*B, self.gpu_batch):
+                p.append(self.model(stack[i:min(i + self.gpu_batch, N*B)]))
+            p = torch.cat(p)
+            CL = p.size(1)
+            p = p.view(N, B, CL)
+            sal = torch.matmul(p.permute(1, 2, 0), self.masks.view(N, H * W))
+            del p 
+            del stack
+            sal = sal.view(B, CL, H, W)
+            return sal
 
 # To process in batches
 # def explain_all_batch(data_loader, explainer):
