@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 import torch
 from tqdm import tqdm
@@ -28,7 +29,11 @@ def auc(arr):
 
 class CausalMetric():
 
+<<<<<<< HEAD
     def __init__(self, model, mode, step, substrate_fn, n_classes, device=torch.device("cpu")):
+=======
+    def __init__(self, model, mode, step, substrate_fn, n_classes, device=torch.device('cpu')):
+>>>>>>> 31a210ae2e035358dc7e57d376cd428429e39b62
         r"""Create deletion/insertion metric instance.
 
         Args:
@@ -79,7 +84,7 @@ class CausalMetric():
         scores = np.empty(n_steps + 1)
         # Coordinates of pixels in order of decreasing saliency
         salient_order = np.flip(np.argsort(explanation.reshape(-1, HW), axis=1), axis=-1)
-        for i in range(n_steps+1):
+        for i in tqdm(range(n_steps+1)):
             pred = self.softmax(self.model(start.to(self.device)))
             pr, cl = torch.topk(pred, 2)
             if verbose == 2:
