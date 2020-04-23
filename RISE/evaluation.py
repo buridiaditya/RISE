@@ -130,6 +130,7 @@ class CausalMetric():
             preds = self.model(img_batch[i*batch_size:(i+1)*batch_size].to(self.device)).cpu()
             predictions[i*batch_size:(i+1)*batch_size] = preds
         top = np.argmax(predictions, -1)
+        exp_batch = exp_batch[range(n_samples), top.cpu().numpy()]
         n_steps = (HW + self.step - 1) // self.step
         scores = np.empty((n_steps + 1, n_samples))
         salient_order = np.flip(np.argsort(exp_batch.reshape(-1, HW), axis=1), axis=-1)
