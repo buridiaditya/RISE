@@ -6,11 +6,12 @@ from tqdm import tqdm
 
 
 class RISE(nn.Module):
-    def __init__(self, model, input_size, gpu_batch=100):
+    def __init__(self, model, input_size, gpu_batch=128,device=None):
         super(RISE, self).__init__()
         self.model = model
         self.input_size = input_size
         self.gpu_batch = gpu_batch
+        self.device = device
 
     def generate_masks(self, N, s, p1, savepath='masks.npy'):
         cell_size = np.ceil(np.array(self.input_size) / s)
@@ -30,14 +31,21 @@ class RISE(nn.Module):
                                          anti_aliasing=False)[x:x + self.input_size[0], y:y + self.input_size[1]]
         self.masks = self.masks.reshape(-1, 1, *self.input_size)
         np.save(savepath, self.masks)
+        
         self.masks = torch.from_numpy(self.masks).float()
-        self.masks = self.masks.cuda()
+        if self.device == None:
+            self.masks = self.masks.cuda()
+        else:
+            self.masks = self.masks.to(self.device)
         self.N = N
         self.p1 = p1
 
     def load_masks(self, filepath):
         self.masks = np.load(filepath)
-        self.masks = torch.from_numpy(self.masks).float().cuda()
+        if self.device == None:
+            self.masks = torch.from_numpy(self.masks).float().cuda()
+        else:
+            self.masks = torch.from_numpy(self.masks).float().to(self.device)
         self.N = self.masks.shape[0]
         self.p1 = 0.1
 
